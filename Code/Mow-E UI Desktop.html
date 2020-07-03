@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <script src='https://kit.fontawesome.com/a076d05399.js'></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" type="text/javascript">
+    </script>
+    <script src="http://www.hivemq.com/demos/websocket-client/js/mqttws31.js" type="text/javascript">
+    </script>
+    <script>
+
+      // Real-time clock display
+      function startTime() {
+        var today = new Date();
+        var h = today.getHours();
+        var m = today.getMinutes();
+        m = checkTime(m);
+        h = checkTime(h);
+        document.getElementById('txt').innerHTML = h + ":" + m;
+        setTimeout(startTime, 500);
+      }
+
+      // Update the clock on the nodemCU
+      function updateNodeMCU() {
+        var today = new Date();
+        var h = today.getHours();
+        var m = today.getMinutes();
+        m = checkTime(m);
+        h = checkTime(h);
+        var nodeTime = "RTC" + h + ":" + m;
+        publish(nodeTime, 'toESP', 2)
+        setTimeout(updateNodeMCU, 60000);
+      }
+
+      // Add zero in front of numbers < 10
+      function checkTime(i) {
+        if (i < 10) {i = "0" + i};
+        return i;
+      }
+
+      var t;
+
+      // Initialize Scheduler
+      function schedule() {
+        var x = document.getElementById('timeInput').value;
+        var today = new Date();
+        var h = today.getHours();
+        var m = today.getMinutes();
+        m = checkTime(m);
+        h = checkTime(h);
+        var rtc = h + ":" + m;
+        if (x == rtc) {
+          publish('Start', 'toESP', 2);
+        }
+        t = setTimeout(schedule, 2000);
+      }
+
+      // Cancel Scheduler
+      function cancelSchedule() {
+        clearTimeout(t);
+      }
+
+      // Using the HiveMQ public Broker, with a random client Id
+      var client = new Messaging.Client("broker.mqttdashboard.com", 8000, "myclientid_" + parseInt(Math.random() * 100, 10));
+
+      // Gets  called if the websocket/mqtt connection gets disconnected for any reason
+      client.onConnectionLost = function (responseObject) {
+        alert("connection lost: " + responseObject.errorMessage);
+        client.connect(options);
+      };
+
+      // Gets called whenever you receive a message for your subscriptions and decides further actions depending on message content
+      client.onMessageArrived = function (message) {
+        if (message.payloadString >= 0 && message.payloadString <= 100) {
+          document.getElementById("batteryLevel").innerHTML = message.payloadString + '%';
+          if (message.payloadString >= 0 && message.payloadString <= 10) {
+            document.getElementById("iconID").className = 'fa fa-battery-0';
+            document.getElementById("iconID").style.color = '#ca2222';
+            document.getElementById("batteryLevel").style.color = '#ca2222';
+          }
+          else if (message.payloadString >= 11 && message.payloadString <= 35) {
+            document.getElementById("iconID").className = 'fa fa-battery-1';
+            document.getElementById("iconID").style.color = '#00ccff';
+            document.getElementById("batteryLevel").style.color = '#00ccff';
+          }
+          else if (message.payloadString >= 36 && message.payloadString <= 65) {
+            document.getElementById("iconID").className = 'fa fa-battery-2';
+            document.getElementById("iconID").style.color = '#00ccff';
+            document.getElementById("batteryLevel").style.color = '#00ccff';
+          }
+          else if (message.payloadString >= 66 && message.payloadString <= 90) {
+            document.getElementById("iconID").className = 'fa fa-battery-3';
+            document.getElementById("iconID").style.color = '#00ccff';
+            document.getElementById("batteryLevel").style.color = '#00ccff';
+          }
+          else if (message.payloadString >= 91 && message.payloadString <= 100) {
+            document.getElementById("iconID").className = 'fa fa-battery-4';
+            document.getElementById("iconID").style.color = '#00ccff';
+            document.getElementById("batteryLevel").style.color = '#00ccff';
+          }
+        }
+        else if (message.payloadString == "Start") {
+          document.getElementById("status").innerHTML = "Mowing";
+          document.getElementById("status").style.color = "#00ccff";
+          n =  new Date();
+          y = n.getFullYear();
+          m = n.getMonth() + 1;
+          d = n.getDate();
+          document.getElementById("activityLog").innerHTML += d + "/" + m + "/" + y + "--> "
+          h = n.getHours();
+          mm = n.getMinutes();
+          h = checkTime(h);
+          mm = checkTime(mm);
+          document.getElementById("activityLog").innerHTML += h + ":" + mm + "--> " + "Mowing";
+          var x = document.getElementById("activityLog");
+          var br = document.createElement('br');
+          x.appendChild(br);
+        }
+        else if (message.payloadString == "Stop") {
+          document.getElementById("status").innerHTML = "Idle";
+          document.getElementById("status").style.color = "#00ccff";
+          n =  new Date();
+          y = n.getFullYear();
+          m = n.getMonth() + 1;
+          d = n.getDate();
+          document.getElementById("activityLog").innerHTML += d + "/" + m + "/" + y + "--> "
+          h = n.getHours();
+          mm = n.getMinutes();
+          h = checkTime(h);
+          mm = checkTime(mm);
+          document.getElementById("activityLog").innerHTML += h + ":" + mm + "--> " + "Idle";
+          var x = document.getElementById("activityLog");
+          var br = document.createElement('br');
+          x.appendChild(br);
+        }
+        else if (message.payloadString == "Low") {
+          document.getElementById("status").innerHTML = "Low Battery";
+          document.getElementById("status").style.color = "#ca2222";
+          n =  new Date();
+          y = n.getFullYear();
+          m = n.getMonth() + 1;
+          d = n.getDate();
+          document.getElementById("activityLog").innerHTML += d + "/" + m + "/" + y + "--> "
+          h = n.getHours();
+          mm = n.getMinutes();
+          h = checkTime(h);
+          mm = checkTime(mm);
+          document.getElementById("activityLog").innerHTML += h + ":" + mm + "--> " + "Low Battery";
+          var x = document.getElementById("activityLog");
+          var br = document.createElement('br');
+          x.appendChild(br);
+        }
+      };
+
+      // Connect Options
+      var options = {
+        timeout: 3,
+
+        // Gets Called if the connection has sucessfully been established
+        onSuccess: function () {
+            alert("Connected");
+            updateNodeMCU();
+        },
+
+        // Gets Called if the connection could not be established
+        onFailure: function (message) {
+            alert("Connection failed: " + message.errorMessage);
+        }
+      };
+
+      // Creates a new Messaging.Message Object and sends it to the HiveMQ MQTT Broker
+      var publish = function (payload, topic, qos) {
+        // Send your message
+        var message = new Messaging.Message(payload);
+        message.destinationName = topic;
+        message.qos = qos;
+        client.send(message);
+      }
+
+      // Write activity log into seperate file
+
+      //Get a reference to the link on the page with an id of "exportxt"
+      var a = document.getElementById("exportxt");
+
+      function downloadInnerHtml(filename, elId, mimeType) {
+        var elHtml = document.getElementById(elId).innerHTML;
+        var link = document.createElement('a');
+        mimeType = mimeType || 'text/html';
+        link.setAttribute('download', filename);
+        link.setAttribute('href', 'data:' + mimeType  +  ';charset=utf-8,' + encodeURIComponent(elHtml));
+        link.click();
+      }
+      var fileName =  'Logs.html'; // You can use the .txt extension if you want
+
+    </script>
+    <style>
+
+      /* Overall style */
+      body {
+        padding: 25px;
+        background-color: black;
+        color: #00ccff;
+        font-family: Verdana, sans-serif;
+        font-size: 24px;
+      }
+
+      /* Image Heading */
+      .imgHeading {
+        position:absolute;
+        top: 77px;
+        right: 25px;
+        z-index: -1;
+      }
+
+      /* Status text */
+      .status {
+        position: fixed;
+        margin-top: 25px;
+        margin-right: 25%;
+        width: 96%;
+        text-align: center;
+        z-index: 1;
+      }
+
+      /* Battery indicator */
+      .battery {
+        position: fixed;
+        top: 168px;
+        right: 120px;
+        z-index: -1;
+      }
+
+      /* Fix overflow from container */
+      .clearfix {
+        overflow: auto;
+      }
+
+      /* Start pill button */
+      .startButton {
+        background-color: #2ab934;
+        font-size: 20px;
+        border: none;
+        color: black;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 30px;
+        box-shadow: 3px 3px #4d4d4d;
+      }
+
+      .startButton:hover {
+        background-color: #59d961;
+      }
+
+      .startButton:active {
+        background-color: black;
+        color: #2ab934;
+        transform: translateX(2px);
+        transform: translateY(2px);
+      }
+
+      /* Pill buttons */
+      .button {
+        background-color: #00ccff;
+        font-size: 20px;
+        border: none;
+        color: black;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 30px;
+        box-shadow: 3px 3px #4d4d4d;
+      }
+
+      .button:hover {
+        background-color: #66e0ff;
+      }
+
+      .button:active {
+        background-color: black;
+        color: #00ccff;
+        transform: translateX(2px);
+        transform: translateY(2px);
+      }
+
+      /* Scheduler input field */
+      .timeInput {
+        font-size: 20px;
+        font-weight: bold;
+        height: 42px;
+        margin-top: 2px;
+        border-radius: 24px;
+        float: right;
+        background-color: #00ccff;
+      }
+
+      .timeInput:hover {
+        background-color: #66e0ff;
+      }
+
+      .timeInput:focus {
+        color: #00ccff;
+        background-color: black;
+      }
+
+      /* Stop button */
+      .block {
+        margin: auto;
+        display: block;
+        width: 500px;
+        border-radius: 100px;
+        background-color: #ca2222;
+        color: black;
+        padding: 14px 28px;
+        font-size: 16px;
+        cursor: pointer;
+        text-align: center;
+      }
+
+      .block:hover {
+        background-color: #de3b3b;
+        color: black;
+      }
+
+      .block:active {
+        background-color: black;
+        color: #ca2222;
+        transform: translateX(2px);
+        transform: translateY(2px);
+      }
+
+      /* Scrollable div element for status update text */
+      .scroll {
+        border-radius: 20px;
+        width: 1200px;
+        height: 50px;
+        overflow: hidden;
+        padding: 20px;
+        color: black;
+      }
+
+    </style>
+  </head>
+  <body onload="startTime(); client.connect(options);">
+    <img src="Heading2.png" alt="Mow-E Heading" class="imgHeading">
+    <title>Mow-E Control</title>
+    <h1>Mow-E</h1>
+    <hr/>
+    <div style="position: relative">
+      <p style='float: left'>
+        <i class='far fa-clock' style='font-size:24px'></i>
+      </p>
+      <p id="txt" style='float: left;'></p>
+      <p class="status" id="status">Status</p>
+      <p class="battery">
+        <i class="fa fa-battery-4" id="iconID" style='font-size:32px'></i>
+      </p>
+      <p style="float: right" id="batteryLevel"></p>
+    </div>
+    <br><br><br>
+    <div class="clearfix">
+      <big><big><big>
+        <button class="startButton" style="float: left" onclick="publish('Start','toESP', 2)">
+          <b>Start</b>
+        </button>
+        <button class="button" style="float: left" title="Connect to Server" onclick="client.subscribe('fromESP', {qos: 2});">
+          <i class='fas fa-wifi'></i>
+        </button>
+        <a id="exportxt" href="#" class="button" style="float: left" title="Download Session Report" onclick="downloadInnerHtml(fileName, 'activityLog','text/html');">
+          <i class='fas fa-file-download'></i>
+        </a>
+        <a class="weatherwidget-io" style="position: fixed; margin-left: 24%; width: 320px; float: left" href="https://forecast7.com/en/50d786d08/aachen/" data-label_1="AACHEN" data-label_2="WEATHER" data-font="Verdana" data-icons="Climacons Animated" data-mode="Current" data-days="3" data-theme="hexellence" data-basecolor="#000000" data-shadow="rgba(130, 130, 130, 0.5)" data-textcolor="#00ccff" data-cloudcolor="#00ccff" data-cloudfill="#000000" >AACHEN WEATHER</a>
+          <script>
+          !function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src='https://weatherwidget.io/js/widget.min.js';fjs.parentNode.insertBefore(js,fjs);}}(document,'script','weatherwidget-io-js');
+          </script>
+        <input type= "time" class="timeInput" id="timeInput" value="00:00"/>
+        <button class="button" style="float: right" onclick="schedule()"/>
+          <i class='fas fa-stopwatch' title="Initialize Scheduler"></i>
+        </button>
+      </big></big></big>
+    </div>
+    <br>
+    <button class="block"  onclick="publish('Stop','toESP', 2); cancelSchedule()">
+      <i class="fas fa-power-off" style='font-size:144px'></i>
+    </button>
+    <br>
+    <div class="scroll" id="activityLog"></div>
+  </body>
+</html>
